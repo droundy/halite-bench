@@ -5,6 +5,8 @@ extern crate sodiumoxide;
 use time::PreciseTime;
 use onionsalt::crypto;
 
+mod nacl;
+
 fn main() {
     bench_random_nonce();
     bench_sodium_gen_nonce();
@@ -12,8 +14,11 @@ fn main() {
         println!("");
         bench_secretbox(*i);
         bench_sodium_secretbox(*i);
+        bench_nacl_secretbox(*i);
+        println!("");
         bench_cryptobox(*i);
         bench_sodium_cryptobox(*i);
+        bench_nacl_cryptobox(*i);
     }
 }
 
@@ -66,11 +71,28 @@ fn bench_cryptobox(len: usize) {
     });
 }
 
+fn bench_nacl_cryptobox(len: usize) {
+    let k1 = crypto::box_keypair().unwrap();
+    let k2 = crypto::box_keypair().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("nacl cryptobox({})", len), len, |c,p| {
+        nacl::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+    });
+}
+
 fn bench_secretbox(len: usize) {
     let k = crypto::random_nonce().unwrap();
     let n = crypto::random_nonce().unwrap();
     bench_function(&format!("secretbox({})", len), len, |c,p| {
         crypto::secretbox(c, p, &n, &k.0).unwrap();
+    });
+}
+
+fn bench_nacl_secretbox(len: usize) {
+    let k = crypto::random_nonce().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("nacl secretbox({})", len), len, |c,p| {
+        nacl::secretbox(c, p, &n.0, &k.0);
     });
 }
 
