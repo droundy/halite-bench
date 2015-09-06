@@ -2,6 +2,7 @@
 name = "halite-bench"
 version = "0.1.0"
 authors = ["droundy <roundyd@physics.oregonstate.edu>"]
+build = "build.rs"
 
 [dependencies]
 onionsalt = { version = "*", git = "https://github.com/droundy/onionsalt" }
@@ -9,3 +10,6 @@ time = "0.1"
 libc = "*"
 
 sodiumoxide = "0.0.8"
+
+[build-dependencies]
+gcc = "0.3"

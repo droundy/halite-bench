@@ -6,6 +6,7 @@ use time::PreciseTime;
 use onionsalt::crypto;
 
 mod nacl;
+mod tweetnacl;
 
 fn main() {
     bench_random_nonce();
@@ -15,10 +16,12 @@ fn main() {
         bench_secretbox(*i);
         bench_sodium_secretbox(*i);
         bench_nacl_secretbox(*i);
+        bench_tweetnacl_secretbox(*i);
         println!("");
         bench_cryptobox(*i);
         bench_sodium_cryptobox(*i);
         bench_nacl_cryptobox(*i);
+        bench_tweetnacl_cryptobox(*i);
     }
 }
 
@@ -80,6 +83,15 @@ fn bench_nacl_cryptobox(len: usize) {
     });
 }
 
+fn bench_tweetnacl_cryptobox(len: usize) {
+    let k1 = crypto::box_keypair().unwrap();
+    let k2 = crypto::box_keypair().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("tweetnacl cryptobox({})", len), len, |c,p| {
+        tweetnacl::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+    });
+}
+
 fn bench_secretbox(len: usize) {
     let k = crypto::random_nonce().unwrap();
     let n = crypto::random_nonce().unwrap();
@@ -93,6 +105,14 @@ fn bench_nacl_secretbox(len: usize) {
     let n = crypto::random_nonce().unwrap();
     bench_function(&format!("nacl secretbox({})", len), len, |c,p| {
         nacl::secretbox(c, p, &n.0, &k.0);
+    });
+}
+
+fn bench_tweetnacl_secretbox(len: usize) {
+    let k = crypto::random_nonce().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("tweetnacl secretbox({})", len), len, |c,p| {
+        tweetnacl::secretbox(c, p, &n.0, &k.0);
     });
 }
 
