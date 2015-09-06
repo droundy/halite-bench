@@ -7,3 +7,4 @@ authors = ["droundy <roundyd@physics.oregonstate.edu>"]
 onionsalt = { version = "*", git = "https://github.com/droundy/onionsalt" }
 time = "0.1"
 
+sodiumoxide = "0.0.8"
