@@ -1,0 +1,9 @@
+[package]
+name = "halite-bench"
+version = "0.1.0"
+authors = ["droundy <roundyd@physics.oregonstate.edu>"]
+
+[dependencies]
+onionsalt = { version = "*", git = "https://github.com/droundy/onionsalt" }
+time = "0.1"
+
