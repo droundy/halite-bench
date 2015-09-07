@@ -12,11 +12,16 @@ use onionsalt::crypto;
 mod nacl;
 mod tweetnacl;
 mod tweetrust;
+mod tweetinplace;
 
 fn main() {
+    bench_tweetrust_beforenm();
+    bench_tweetinplace_beforenm();
+    bench_tweetnacl_beforenm();
+    println!("");
     bench_random_nonce();
     bench_sodium_gen_nonce();
-    for i in &[33usize, 64, 100, 1000, 10000] {
+    for i in &[64usize, 10000] {
         println!("");
         bench_secretbox(*i);
         bench_tweetrust_secretbox(*i);
@@ -30,6 +35,9 @@ fn main() {
         bench_nacl_cryptobox(*i);
         bench_tweetnacl_cryptobox(*i);
     }
+    println!("");
+    bench_tweetrust_beforenm();
+    bench_tweetnacl_beforenm();
 }
 
 fn bench_function<F>(name: &str, len: usize, f: F) where F: Fn(&mut[u8], &mut[u8]) {
@@ -38,7 +46,7 @@ fn bench_function<F>(name: &str, len: usize, f: F) where F: Fn(&mut[u8], &mut[u8
     let mut total_secs = 0.0;
     let mut ciphertext = vec![0; len];
     let mut plaintext = vec![0; len];
-    let time_goal = 1.0;
+    let time_goal = 10.0;
 
     while total_secs < time_goal {
         let start = PreciseTime::now();
@@ -161,6 +169,27 @@ fn bench_sodium_cryptobox(len: usize) {
         for i in 0..len-32 {
             c[i+32] = ciphertext[i];
         }
+    });
+}
+
+fn bench_tweetinplace_beforenm() {
+    let k = crypto::box_keypair().unwrap();
+    bench_function(&format!("tweetinplace box_beforenm"), 32, |c,_| {
+        *array_mut_ref![c,0,32] = tweetinplace::box_beforenm(array_ref![c,0,32], &k.secret.0);
+    });
+}
+
+fn bench_tweetrust_beforenm() {
+    let k = crypto::box_keypair().unwrap();
+    bench_function(&format!("tweetrust box_beforenm"), 32, |c,_| {
+        *array_mut_ref![c,0,32] = tweetrust::box_beforenm(array_ref![c,0,32], &k.secret.0);
+    });
+}
+
+fn bench_tweetnacl_beforenm() {
+    let k = crypto::box_keypair().unwrap();
+    bench_function(&format!("tweetnacl box_beforenm"), 32, |c,_| {
+        *array_mut_ref![c,0,32] = tweetnacl::box_beforenm(array_ref![c,0,32], &k.secret.0);
     });
 }
 

@@ -460,8 +460,8 @@ fn car25519(o: &mut GF) {
     for i in 0..16 {
         o[i] += 1<<16;
         let c: i64 = o[i]>>16;
-        let iis15 = if i == 15 {1} else {0};
-        let ilt15 = if i < 15 {1} else {0};
+        let iis15 = (i == 15) as i64;
+        let ilt15 = (i < 15) as usize;
         o[(i+1)*ilt15] += c-1+37*(c-1)*iis15;
         o[i] -= c<<16;
     }
@@ -499,20 +499,6 @@ fn pack25519(o: &mut[u8], n: &GF) {
     }
 }
 
-// fn neq25519(a: &GF, b: &GF) -> Result<(), NaClError> {
-//     let mut c: [u8; 32] = [0; 32];
-//     let mut d: [u8; 32] = [0; 32];
-//     pack25519(&mut c,a);
-//     pack25519(&mut d,b);
-//     verify_32(&c,&d)
-// }
-
-// fn par25519(a: &GF) -> u8 {
-//     let mut d: [u8; 32] = [0; 32];
-//     pack25519(&mut d,a);
-//     d[0]&1
-// }
-
 fn unpack25519(n: &[u8]) -> GF {
     let mut o = GF0;
     for i in 0..16 {
@@ -523,26 +509,35 @@ fn unpack25519(n: &[u8]) -> GF {
 }
 
 #[allow(non_snake_case)]
-fn A(a: &GF, b: &GF) -> GF {
-    let mut out: GF = *a;
+fn A(out: &mut GF, a: &GF, b: &GF) {
+    for i in 0..16 {
+        out[i] = a[i] + b[i];
+    }
+}
+
+#[allow(non_snake_case)]
+fn eqA(out: &mut GF, b: &GF) {
     for i in 0..16 {
         out[i] += b[i];
     }
-    out
 }
 
 #[allow(non_snake_case)]
-fn Z(a: &GF, b: &GF) -> GF {
-    let mut out: GF = *a;
+fn Z(out: &mut GF, a: &GF, b: &GF) {
+    for i in 0..16 {
+        out[i] = a[i] - b[i];
+    }
+}
+
+#[allow(non_snake_case)]
+fn eqZ(out: &mut GF, b: &GF) {
     for i in 0..16 {
         out[i] -= b[i];
     }
-    out
 }
 
 #[allow(non_snake_case)]
-fn M(a: &GF, b: &GF) -> GF {
-    let mut o: GF = *a;
+fn M(o: &mut GF, a: &GF, b: &GF) {
     let mut t: [i64; 31] = [0; 31];
     for i in 0..16 {
         for j in 0..16 {
@@ -555,37 +550,61 @@ fn M(a: &GF, b: &GF) -> GF {
     for i in 0..16 {
         o[i]=t[i];
     }
-    car25519(&mut o);
-    car25519(&mut o);
-    o
+    car25519(o);
+    car25519(o);
 }
 
 #[allow(non_snake_case)]
-fn S(a: &GF) -> GF {
-    M(a,a)
+fn S(o: &mut GF, a: &GF) {
+    M(o,a,a)
+}
+
+#[allow(non_snake_case)]
+fn eqM(o: &mut GF, b: &GF) {
+    let mut t: [i64; 31] = [0; 31];
+    for i in 0..16 {
+        for j in 0..16 {
+            t[i+j] += o[i]*b[j];
+        }
+    }
+    for i in 0..15 {
+        t[i]+=38*t[i+16];
+    }
+    for i in 0..16 {
+        o[i]=t[i];
+    }
+    car25519(o);
+    car25519(o);
+}
+
+#[allow(non_snake_case)]
+fn eqS(o: &mut GF) {
+    let mut t: [i64; 31] = [0; 31];
+    for i in 0..16 {
+        for j in 0..16 {
+            t[i+j] += o[i]*o[j];
+        }
+    }
+    for i in 0..15 {
+        t[i]+=38*t[i+16];
+    }
+    for i in 0..16 {
+        o[i]=t[i];
+    }
+    car25519(o);
+    car25519(o);
 }
 
 fn inv25519(i: &GF) -> GF {
     let mut c = *i;
     for a in (0..254).rev() {
-        c = S(&c);
+        eqS(&mut c);
         if a!=2 && a!=4 {
-            c = M(&c,i)
+            eqM(&mut c,i)
         }
     }
     c
 }
-
-// fn pow2523(i: &GF) -> GF {
-//     let mut c = *i;
-//     for a in (0..251).rev() {
-//         c = S(&c);
-//         if a != 1 {
-//             c = M(&c, i);
-//         }
-//     }
-//     c
-// }
 
 fn scalarmult(q: &mut[u8;32], n: &[u8;32], p: &[u8;32]) {
     let mut z: [u8; 32] = [0; 32];
@@ -599,30 +618,33 @@ fn scalarmult(q: &mut[u8;32], n: &[u8;32], p: &[u8;32]) {
     let mut d = GF0;
     let mut a = GF0;
     let mut c = GF0;
+    let mut e = GF0;
+    let mut f = GF0;
     a[0]=1;
     d[0]=1;
     for i in (0..255).rev() {
         let r: i64 = ((z[i>>3]>>(i&7))&1) as i64;
         sel25519(&mut a, &mut b,r);
         sel25519(&mut c, &mut d,r);
-        let mut e = A(&a,&c);
-        a = Z(&a,&c);
-        c = A(&b,&d);
-        b = Z(&b,&d);
-        d = S(&e);
-        let f = S(&a);
-        a = M(&c,&a);
-        c = M(&b,&e);
-        e = A(&a,&c);
-        a = Z(&a,&c);
-        b = S(&a);
-        c = Z(&d,&f);
-        a = M(&c,&_121665);
-        a = A(&a,&d);
-        c = M(&c,&a);
-        a = M(&d,&f);
-        d = M(&b,&x[0]);
-        b = S(&e);
+        A(&mut e,&a,&c);
+        eqZ(&mut a,&c);
+        A(&mut c, &b,&d);
+        eqZ(&mut b,&d);
+        S(&mut d,&e);
+        S(&mut f,&a);
+        let acopy = a;
+        M(&mut a,&c,&acopy);
+        M(&mut c,&b,&e);
+        A(&mut e,&a,&c);
+        eqZ(&mut a,&c);
+        S(&mut b,&a);
+        Z(&mut c,&d,&f);
+        M(&mut a,&c,&_121665);
+        eqA(&mut a,&d);
+        eqM(&mut c,&a);
+        M(&mut a,&d,&f);
+        M(&mut d,&b,&x[0]);
+        S(&mut b,&e);
         sel25519(&mut a, &mut b,r);
         sel25519(&mut c, &mut d,r);
     }
@@ -631,7 +653,8 @@ fn scalarmult(q: &mut[u8;32], n: &[u8;32], p: &[u8;32]) {
     x[3] = b;
     x[4] = d;
     x[2] = inv25519(&x[2]);
-    x[1] = M(&x[1],&x[2]);
+    M(&mut f, &x[1],&x[2]);
+    x[1] = f;
     pack25519(q,&x[1]);
 }
 
