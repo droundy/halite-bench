@@ -13,6 +13,26 @@ extern {
                   n: *const u8,
                   pk: *const u8,
                   sk: *const u8) -> libc::c_int;
+    fn crypto_box_beforenm(k: *mut u8,
+                           y: *const u8,
+                           x: *const u8) -> libc::c_int;
+    fn crypto_scalarmult(k: *mut u8,
+                         y: *const u8,
+                         x: *const u8) -> libc::c_int;
+}
+
+pub fn scalarmult(o: &mut[u8;32], pk: &[u8;32], sk: &[u8;32]) {
+    unsafe {
+        crypto_scalarmult(o.as_mut_ptr(), pk.as_ptr(), sk.as_ptr());
+    }
+}
+
+pub fn box_beforenm(pk: &[u8;32], sk: &[u8;32]) -> [u8;32] {
+    let mut k: [u8; 32] = [0; 32];
+    unsafe {
+        crypto_box_beforenm(k.as_mut_ptr(), pk.as_ptr(), sk.as_ptr());
+    }
+    k
 }
 
 pub fn box_up(c: &mut [u8],

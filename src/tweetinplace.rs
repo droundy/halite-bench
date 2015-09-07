@@ -476,7 +476,7 @@ fn sel25519(p: &mut GF, q: &mut GF, b: i64) {
     }
 }
 
-fn pack25519(o: &mut[u8], n: &GF) {
+fn pack25519(o: &mut[u8;32], n: &GF) {
     let mut t = *n;
     car25519(&mut t);
     car25519(&mut t);
@@ -499,7 +499,7 @@ fn pack25519(o: &mut[u8], n: &GF) {
     }
 }
 
-fn unpack25519(n: &[u8]) -> GF {
+fn unpack25519(n: &[u8;32]) -> GF {
     let mut o = GF0;
     for i in 0..16 {
         o[i]=n[2*i] as i64 + ((n[2*i+1] as i64) << 8);
@@ -1090,5 +1090,46 @@ fn box_unbox() {
         }
     }
     quickcheck::quickcheck(f as fn(Vec<u8>, B32, KeyPair, KeyPair));
+}
+
+#[test]
+fn box_vs_tweetnacl() {
+    use super::tweetnacl;
+    fn f(data: Vec<u8>, n: B32, k1: KeyPair, k2: KeyPair) {
+        let mut padded_data = vec![0;32];
+        padded_data.extend(data.clone());
+        let mut ciphertext = vec![0;padded_data.len()];
+        box_up(&mut ciphertext, &padded_data, &n.0, &k1.public, &k2.secret);
+        let mut tweettext = vec![0;padded_data.len()];
+        tweetnacl::box_up(&mut tweettext, &padded_data, &n.0, &k1.public, &k2.secret);
+        for i in 0..ciphertext.len() {
+            assert_eq!(ciphertext[i], tweettext[i]);
+        }
+    }
+    quickcheck::quickcheck(f as fn(Vec<u8>, B32, KeyPair, KeyPair));
+}
+
+#[test]
+fn beforenm_vs_tweetnacl() {
+    use super::tweetnacl;
+    fn f(k1: KeyPair, k2: KeyPair) {
+        let k = box_beforenm(&k1.public, &k2.secret);
+        let kk = tweetnacl::box_beforenm(&k1.public, &k2.secret);
+        assert_eq!(k, kk);
+    }
+    quickcheck::quickcheck(f as fn(KeyPair, KeyPair));
+}
+
+#[test]
+fn scalarmult_vs_tweetnacl() {
+    use super::tweetnacl;
+    fn f(k1: KeyPair, k2: KeyPair) {
+        let mut v1 = [0u8;32];
+        let mut v2 = [0u8;32];
+        scalarmult(&mut v1, &k1.public, &k2.secret);
+        tweetnacl::scalarmult(&mut v1, &k1.public, &k2.secret);
+        assert_eq!(v1, v2);
+    }
+    quickcheck::quickcheck(f as fn(KeyPair, KeyPair));
 }
 
