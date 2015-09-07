@@ -37,7 +37,7 @@ pub fn box_beforenm(pk: &[u8;32], sk: &[u8;32]) -> [u8;32] {
 
 pub fn box_up(c: &mut [u8],
               p: &[u8],
-              n: &[u8; 32],
+              n: &[u8; 24],
               pk: &[u8; 32],
               sk: &[u8; 32]) {
     assert_eq!(c.len(), p.len());
@@ -53,7 +53,7 @@ pub fn box_up(c: &mut [u8],
 
 pub fn secretbox(c: &mut [u8],
                  p: &[u8],
-                 n: &[u8; 32],
+                 n: &[u8; 24],
                  k: &[u8; 32]) {
     assert_eq!(c.len(), p.len());
     unsafe {

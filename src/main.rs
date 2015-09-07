@@ -18,6 +18,7 @@ fn main() {
     bench_tweetrust_beforenm();
     bench_tweetinplace_beforenm();
     bench_tweetnacl_beforenm();
+    bench_nacl_beforenm();
     println!("");
     bench_random_nonce();
     bench_sodium_gen_nonce();
@@ -46,7 +47,7 @@ fn bench_function<F>(name: &str, len: usize, f: F) where F: Fn(&mut[u8], &mut[u8
     let mut total_secs = 0.0;
     let mut ciphertext = vec![0; len];
     let mut plaintext = vec![0; len];
-    let time_goal = 10.0;
+    let time_goal = 1.0;
 
     while total_secs < time_goal {
         let start = PreciseTime::now();
@@ -92,27 +93,27 @@ fn bench_cryptobox(len: usize) {
 fn bench_nacl_cryptobox(len: usize) {
     let k1 = crypto::box_keypair().unwrap();
     let k2 = crypto::box_keypair().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("nacl cryptobox({})", len), len, |c,p| {
-        nacl::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+        nacl::box_up(c, p, &n, &k1.public.0, &k2.secret.0);
     });
 }
 
 fn bench_tweetnacl_cryptobox(len: usize) {
     let k1 = crypto::box_keypair().unwrap();
     let k2 = crypto::box_keypair().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("tweetnacl cryptobox({})", len), len, |c,p| {
-        tweetnacl::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+        tweetnacl::box_up(c, p, &n, &k1.public.0, &k2.secret.0);
     });
 }
 
 fn bench_tweetrust_cryptobox(len: usize) {
     let k1 = crypto::box_keypair().unwrap();
     let k2 = crypto::box_keypair().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("tweetrust cryptobox({})", len), len, |c,p| {
-        tweetrust::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+        tweetrust::box_up(c, p, &n, &k1.public.0, &k2.secret.0);
     });
 }
 
@@ -126,25 +127,25 @@ fn bench_secretbox(len: usize) {
 
 fn bench_nacl_secretbox(len: usize) {
     let k = crypto::random_nonce().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("nacl secretbox({})", len), len, |c,p| {
-        nacl::secretbox(c, p, &n.0, &k.0);
+        nacl::secretbox(c, p, &n, &k.0);
     });
 }
 
 fn bench_tweetnacl_secretbox(len: usize) {
     let k = crypto::random_nonce().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("tweetnacl secretbox({})", len), len, |c,p| {
-        tweetnacl::secretbox(c, p, &n.0, &k.0);
+        tweetnacl::secretbox(c, p, &n, &k.0);
     });
 }
 
 fn bench_tweetrust_secretbox(len: usize) {
-    let k = crypto::random_nonce().unwrap();
-    let n = crypto::random_nonce().unwrap();
+    let k = tweetrust::random_key().unwrap();
+    let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("tweetrust secretbox({})", len), len, |c,p| {
-        tweetrust::secretbox(c, p, &n.0, &k.0);
+        tweetrust::secretbox(c, p, &n, &k);
     });
 }
 
@@ -190,6 +191,13 @@ fn bench_tweetnacl_beforenm() {
     let k = crypto::box_keypair().unwrap();
     bench_function(&format!("tweetnacl box_beforenm"), 32, |c,_| {
         *array_mut_ref![c,0,32] = tweetnacl::box_beforenm(array_ref![c,0,32], &k.secret.0);
+    });
+}
+
+fn bench_nacl_beforenm() {
+    let k = crypto::box_keypair().unwrap();
+    bench_function(&format!("nacl box_beforenm"), 32, |c,_| {
+        *array_mut_ref![c,0,32] = nacl::box_beforenm(array_ref![c,0,32], &k.secret.0);
     });
 }
 

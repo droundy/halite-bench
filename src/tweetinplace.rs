@@ -90,7 +90,7 @@ static _9: [u8; 32] = [9; 32];
 type GF = [i64; 16];
 static GF0: GF = [0; 16];
 // static GF1: GF = [1; 16];
-static _121665: GF = [0xDB41,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+static _121665: GF = [0xDB41,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 // static D: GF = [0x78a3, 0x1359, 0x4dca, 0x75eb, 0xd8ab, 0x4141, 0x0a4d, 0x0070,
 //                 0xe898, 0x7779, 0x4079, 0x8cc7, 0xfe73, 0x2b6f, 0x6cee, 0x5203];
 // static D2: GF = [0xf159, 0x26b2, 0x9b94, 0xebd6, 0xb156, 0x8283, 0x149a, 0x00e0,
@@ -200,7 +200,7 @@ fn core_hsalsa20(n: &[u8; 16], k: &[u8; 32], c: &[u8; 16]) -> [u8; 32] {
 static SIGMA: &'static [u8; 16] = b"expand 32-byte k";
 
 fn stream_salsa20_xor(c: &mut[u8], mut m: &[u8], mut b: u64,
-                      n: &[u8; 16], k: &[u8; 32]) {
+                      n: &[u8; 8], k: &[u8; 32]) {
     assert!(b != 0);
     let mut z: [u8; 16] = [0; 16];
     for i in 0..8 {
@@ -232,7 +232,7 @@ fn stream_salsa20_xor(c: &mut[u8], mut m: &[u8], mut b: u64,
 }
 
 
-fn stream_salsa20(c: &mut[u8], d: u64, n: &[u8; 16], k: &[u8; 32]) {
+fn stream_salsa20(c: &mut[u8], d: u64, n: &[u8; 8], k: &[u8; 32]) {
     stream_salsa20_xor(c,&[],d,n,k)
 }
 
@@ -240,16 +240,16 @@ fn stream_salsa20(c: &mut[u8], d: u64, n: &[u8; 16], k: &[u8; 32]) {
 // always has a fixed length of 32, and returns its output.  We
 // don't need an actual crypto_stream, since it is only used once
 // in tweetnacl.
-fn stream_32(n: &[u8;32], k: &[u8; 32]) -> [u8; 32] {
+fn stream_32(n: &[u8;24], k: &[u8; 32]) -> [u8; 32] {
     let s = core_hsalsa20(array_ref![n, 0, 16], k, SIGMA);
     let mut c: [u8; 32] = [0; 32];
-    stream_salsa20(&mut c,32,array_ref![n, 16, 16],&s);
+    stream_salsa20(&mut c,32,array_ref![n, 16, 8],&s);
     c
 }
 
-fn stream_xor(c: &mut[u8], m: &[u8], d: u64, n: &[u8;32], k: &[u8; 32]) {
+fn stream_xor(c: &mut[u8], m: &[u8], d: u64, n: &[u8;24], k: &[u8; 32]) {
     let s = core_hsalsa20(array_ref![n, 0, 16], k, SIGMA);
-    stream_salsa20_xor(c,m,d,array_ref![n, 16, 16],&s)
+    stream_salsa20_xor(c,m,d,array_ref![n, 16, 8],&s)
 }
 
 fn add1305(h: &mut[u32], c: &[u32]) {
@@ -394,7 +394,7 @@ fn onetimeauth_verify(h: &[u8; 16], m: &[u8], k: &[u8])
 }
 
 /// Use symmetric encryption to encrypt a message.
-pub fn secretbox(c: &mut[u8], m: &[u8], n: &[u8;32], k: &[u8; 32]) {
+pub fn secretbox(c: &mut[u8], m: &[u8], n: &[u8;24], k: &[u8; 32]) {
     let d = c.len() as u64;
     assert_eq!(d as usize, m.len());
     assert!(d >= 32);
@@ -413,7 +413,7 @@ pub fn secretbox(c: &mut[u8], m: &[u8], n: &[u8;32], k: &[u8; 32]) {
 }
 
 /// Decrypt a message encrypted with `secretbox`.
-pub fn secretbox_open(m: &mut[u8], c: &[u8], n: &[u8;32], k: &[u8; 32])
+pub fn secretbox_open(m: &mut[u8], c: &[u8], n: &[u8;24], k: &[u8; 32])
                              -> Result<(), NaClError> {
     let d = c.len() as u64;
     if m.len() as u64 != d {
@@ -441,7 +441,7 @@ fn secretbox_works() {
     for _ in 0..plaintext.len() {
         ciphertext.push(0);
     }
-    let nonce = [0; 32];
+    let nonce = [0; 24];
     secretbox(&mut ciphertext, plaintext, &nonce, secretkey);
     // There has got to be a better way to allocate an array of
     // zeros with dynamically determined type.
@@ -675,13 +675,13 @@ pub fn box_beforenm(pk: &[u8;32], sk: &[u8;32]) -> [u8;32] {
 /// Encrypt a message after creating a secret key using
 /// `box_beforenm`.  The two functions together come out to the
 /// same thing as `box_up`.
-pub fn box_afternm(c: &mut[u8], m: &[u8], n: &[u8;32], k: &[u8; 32]) {
+pub fn box_afternm(c: &mut[u8], m: &[u8], n: &[u8;24], k: &[u8; 32]) {
     secretbox(c, m, n, k)
 }
 
 /// An implementation of the NaCl function `crypto_box`, renamed
 /// to `crypto::box_up` because `box` is a keyword in rust.
-pub fn box_up(c: &mut[u8], m: &[u8], n: &[u8;32], pk: &[u8;32], sk: &[u8;32]) {
+pub fn box_up(c: &mut[u8], m: &[u8], n: &[u8;24], pk: &[u8;32], sk: &[u8;32]) {
     let k = box_beforenm(pk,sk);
     box_afternm(c, m, n, &k);
 }
@@ -689,7 +689,7 @@ pub fn box_up(c: &mut[u8], m: &[u8], n: &[u8;32], pk: &[u8;32], sk: &[u8;32]) {
 /// Decrypt a message using a key that was precomputed using
 /// `box_beforenm`.  The two functions together are the same as
 /// the easier-to-use `box_open`.
-pub fn box_open_afternm(m: &mut[u8], c: &[u8], n: &[u8;32], k: &[u8; 32])
+pub fn box_open_afternm(m: &mut[u8], c: &[u8], n: &[u8;24], k: &[u8; 32])
                            -> Result<(), NaClError> {
     secretbox_open(m,c,n,k)
 }
@@ -697,7 +697,7 @@ pub fn box_open_afternm(m: &mut[u8], c: &[u8], n: &[u8;32], k: &[u8; 32])
 /// Open a message encrypted with `crypto::box_up`.
 ///
 pub fn box_open(m: &mut[u8], c: &[u8],
-                n: &[u8;32], pk: &[u8;32], sk: &[u8;32])
+                n: &[u8;24], pk: &[u8;32], sk: &[u8;32])
                 -> Result<(), NaClError> {
     let k = box_beforenm(pk,sk);
     box_open_afternm(m, c, n, &k)
@@ -714,7 +714,7 @@ fn box_works() {
     for _ in 0..plaintext.len() {
         ciphertext.push(0);
     }
-    let nonce = [0; 32];
+    let nonce = [0; 24];
     box_up(&mut ciphertext, plaintext, &nonce, &k1.public, &k2.secret);
     // There has got to be a better way to allocate an array of
     // zeros with dynamically determined type.
@@ -982,154 +982,22 @@ pub struct KeyPair {
     pub secret: [u8;32],
 }
 
-#[cfg(test)]
-impl quickcheck::Arbitrary for KeyPair {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let mut pk: [u8; 32] = [0; 32];
-        let sk = B32::arbitrary(g).0;
-        scalarmult_base(&mut pk, &sk);
-        KeyPair { public: pk, secret: sk }
-    }
-}
-
-#[cfg(test)]
-#[derive(Debug,Clone)]
-struct B32([u8;32]);
-#[cfg(test)]
-impl quickcheck::Arbitrary for B32 {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let mut array = [u8::arbitrary(g); 32];
-        for i in 1..32 {
-            array[i] = u8::arbitrary(g);
-        }
-        B32(array)
-    }
-    fn shrink(&self) -> Box<Iterator<Item=Self>> {
-        if self.0 == [0;32] {
-            quickcheck::empty_shrinker()
-        } else {
-            quickcheck::single_shrinker(B32([0;32]))
-        }
-    }
-}
-
 /// Generate a random public/secret key pair.  This is the *only*
 /// way you generate keys.
 pub fn box_keypair() -> Result<KeyPair, NaClError> {
     let mut pk: [u8; 32] = [0; 32];
-    let sk = try!(random_nonce());
+    let sk = try!(random_key());
     scalarmult_base(&mut pk, &sk);
     Ok(KeyPair { public: pk, secret: sk })
 }
 
-/// Securely creates a random nonce.  This function isn't in the
+/// Securely creates a random key.  This function isn't in the
 /// NaCl, but I feel like it could be very handy, and a random
 /// nonce from a secure source is often what you want.
-pub fn random_nonce() -> Result<[u8;32], NaClError> {
+pub fn random_key() -> Result<[u8;32], NaClError> {
     use rand::Rng;
     let mut rng = try!(rand::OsRng::new());
     let mut n = [0; 32];
     rng.fill_bytes(&mut n);
     Ok(n)
 }
-
-
-
-
-#[test]
-fn secretbox_unsecretbox() {
-    fn f(data: Vec<u8>, n: B32, k: B32) {
-        let mut padded_data = vec![0;32];
-        padded_data.extend(data.clone());
-        let mut ciphertext = vec![0;padded_data.len()];
-        secretbox(&mut ciphertext, &padded_data, &n.0, &k.0);
-        for i in 0..padded_data.len() {
-            padded_data[i] = 0; // no cheating!
-        }
-        secretbox_open(&mut padded_data, &ciphertext, &n.0, &k.0).unwrap();
-        for i in 0..data.len() {
-            assert_eq!(data[i], padded_data[32+i]);
-        }
-    }
-    quickcheck::quickcheck(f as fn(Vec<u8>, B32, B32));
-}
-
-#[test]
-fn secretbox_unsecretbox_auth() {
-    fn f(data: Vec<u8>, n: B32, k: B32, whichbyte: usize) -> quickcheck::TestResult {
-        if data.len() == 0 {
-            return quickcheck::TestResult::discard();
-        }
-        let mut padded_data = vec![0;32];
-        padded_data.extend(data.clone());
-        let mut ciphertext = vec![0;padded_data.len()];
-        secretbox(&mut ciphertext, &padded_data, &n.0, &k.0);
-        for i in 0..padded_data.len() {
-            padded_data[i] = 0; // no cheating!
-        }
-        ciphertext[32 + whichbyte % data.len()] ^= 1;
-        quickcheck::TestResult::from_bool(secretbox_open(&mut padded_data, &ciphertext,
-                                                         &n.0, &k.0).is_err())
-    }
-    quickcheck::quickcheck(f as fn(Vec<u8>, B32, B32, usize) -> quickcheck::TestResult);
-}
-
-#[test]
-fn box_unbox() {
-    fn f(data: Vec<u8>, n: B32, k1: KeyPair, k2: KeyPair) {
-        let mut padded_data = vec![0;32];
-        padded_data.extend(data.clone());
-        let mut ciphertext = vec![0;padded_data.len()];
-        box_up(&mut ciphertext, &padded_data, &n.0, &k1.public, &k2.secret);
-        for i in 0..padded_data.len() {
-            padded_data[i] = 0; // no cheating!
-        }
-        box_open(&mut padded_data, &ciphertext, &n.0, &k2.public, &k1.secret).unwrap();
-        for i in 0..data.len() {
-            assert_eq!(data[i], padded_data[32+i]);
-        }
-    }
-    quickcheck::quickcheck(f as fn(Vec<u8>, B32, KeyPair, KeyPair));
-}
-
-#[test]
-fn box_vs_tweetnacl() {
-    use super::tweetnacl;
-    fn f(data: Vec<u8>, n: B32, k1: KeyPair, k2: KeyPair) {
-        let mut padded_data = vec![0;32];
-        padded_data.extend(data.clone());
-        let mut ciphertext = vec![0;padded_data.len()];
-        box_up(&mut ciphertext, &padded_data, &n.0, &k1.public, &k2.secret);
-        let mut tweettext = vec![0;padded_data.len()];
-        tweetnacl::box_up(&mut tweettext, &padded_data, &n.0, &k1.public, &k2.secret);
-        for i in 0..ciphertext.len() {
-            assert_eq!(ciphertext[i], tweettext[i]);
-        }
-    }
-    quickcheck::quickcheck(f as fn(Vec<u8>, B32, KeyPair, KeyPair));
-}
-
-#[test]
-fn beforenm_vs_tweetnacl() {
-    use super::tweetnacl;
-    fn f(k1: KeyPair, k2: KeyPair) {
-        let k = box_beforenm(&k1.public, &k2.secret);
-        let kk = tweetnacl::box_beforenm(&k1.public, &k2.secret);
-        assert_eq!(k, kk);
-    }
-    quickcheck::quickcheck(f as fn(KeyPair, KeyPair));
-}
-
-#[test]
-fn scalarmult_vs_tweetnacl() {
-    use super::tweetnacl;
-    fn f(k1: KeyPair, k2: KeyPair) {
-        let mut v1 = [0u8;32];
-        let mut v2 = [0u8;32];
-        scalarmult(&mut v1, &k1.public, &k2.secret);
-        tweetnacl::scalarmult(&mut v1, &k1.public, &k2.secret);
-        assert_eq!(v1, v2);
-    }
-    quickcheck::quickcheck(f as fn(KeyPair, KeyPair));
-}
-
