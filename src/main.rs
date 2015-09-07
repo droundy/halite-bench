@@ -1,12 +1,17 @@
 extern crate time;
 extern crate onionsalt;
 extern crate sodiumoxide;
+extern crate rand;
+
+#[macro_use]
+extern crate arrayref;
 
 use time::PreciseTime;
 use onionsalt::crypto;
 
 mod nacl;
 mod tweetnacl;
+mod tweetrust;
 
 fn main() {
     bench_random_nonce();
@@ -14,11 +19,13 @@ fn main() {
     for i in &[33usize, 64, 100, 1000, 10000] {
         println!("");
         bench_secretbox(*i);
+        bench_tweetrust_secretbox(*i);
         bench_sodium_secretbox(*i);
         bench_nacl_secretbox(*i);
         bench_tweetnacl_secretbox(*i);
         println!("");
         bench_cryptobox(*i);
+        bench_tweetrust_cryptobox(*i);
         bench_sodium_cryptobox(*i);
         bench_nacl_cryptobox(*i);
         bench_tweetnacl_cryptobox(*i);
@@ -92,6 +99,15 @@ fn bench_tweetnacl_cryptobox(len: usize) {
     });
 }
 
+fn bench_tweetrust_cryptobox(len: usize) {
+    let k1 = crypto::box_keypair().unwrap();
+    let k2 = crypto::box_keypair().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("tweetrust cryptobox({})", len), len, |c,p| {
+        tweetrust::box_up(c, p, &n.0, &k1.public.0, &k2.secret.0);
+    });
+}
+
 fn bench_secretbox(len: usize) {
     let k = crypto::random_nonce().unwrap();
     let n = crypto::random_nonce().unwrap();
@@ -113,6 +129,14 @@ fn bench_tweetnacl_secretbox(len: usize) {
     let n = crypto::random_nonce().unwrap();
     bench_function(&format!("tweetnacl secretbox({})", len), len, |c,p| {
         tweetnacl::secretbox(c, p, &n.0, &k.0);
+    });
+}
+
+fn bench_tweetrust_secretbox(len: usize) {
+    let k = crypto::random_nonce().unwrap();
+    let n = crypto::random_nonce().unwrap();
+    bench_function(&format!("tweetrust secretbox({})", len), len, |c,p| {
+        tweetrust::secretbox(c, p, &n.0, &k.0);
     });
 }
 
