@@ -5,8 +5,11 @@ addons:
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev
-    - libsodium-dev
-    - libnacl-dev
+install:
+  - wget https://github.com/jedisct1/libsodium/releases/download/1.0.3/libsodium-1.0.3.tar.gz
+  - tar xvfz libsodium-1.0.3.tar.gz
+  - cd libsodium-1.0.3 && ./configure --prefix=/usr && make && sudo make install && cd ..
+  - sudo apt-get install libnacl-dev
 rust:
   - nightly
   - beta
