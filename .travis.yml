@@ -5,6 +5,8 @@ addons:
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev
+    - libsodium-dev
+    - libnacl-dev
 rust:
   - nightly
   - beta
