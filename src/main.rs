@@ -86,7 +86,7 @@ fn bench_cryptobox(len: usize) {
     let k2 = crypto::box_keypair().unwrap();
     let n = crypto::random_nonce().unwrap();
     bench_function(&format!("cryptobox({})", len), len, |c,p| {
-        crypto::box_up(c, p, &n, &k1.public, &k2.secret).unwrap();
+        crypto::box_up(c, p, &n, &k1.public, &k2.secret);
     });
 }
 
@@ -118,26 +118,26 @@ fn bench_tweetrust_cryptobox(len: usize) {
 }
 
 fn bench_secretbox(len: usize) {
-    let k = crypto::random_nonce().unwrap();
+    let k = crypto::random_32().unwrap();
     let n = crypto::random_nonce().unwrap();
     bench_function(&format!("secretbox({})", len), len, |c,p| {
-        crypto::secretbox(c, p, &n, &k.0).unwrap();
+        crypto::secretbox(c, p, &n, &k);
     });
 }
 
 fn bench_nacl_secretbox(len: usize) {
-    let k = crypto::random_nonce().unwrap();
+    let k = crypto::random_32().unwrap();
     let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("nacl secretbox({})", len), len, |c,p| {
-        nacl::secretbox(c, p, &n, &k.0);
+        nacl::secretbox(c, p, &n, &k);
     });
 }
 
 fn bench_tweetnacl_secretbox(len: usize) {
-    let k = crypto::random_nonce().unwrap();
+    let k = crypto::random_32().unwrap();
     let n = tweetrust::random_nonce().unwrap();
     bench_function(&format!("tweetnacl secretbox({})", len), len, |c,p| {
-        tweetnacl::secretbox(c, p, &n, &k.0);
+        tweetnacl::secretbox(c, p, &n, &k);
     });
 }
 

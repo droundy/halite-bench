@@ -1065,6 +1065,27 @@ fn box_unbox() {
 }
 
 #[test]
+fn box_vs_onionsalt() {
+    use super::onionsalt::crypto;
+    fn f(data: Vec<u8>, n: T24, k1: KeyPair, k2: KeyPair) {
+        let n = from_t24(n);
+        let mut padded_data = vec![0;32];
+        padded_data.extend(data.clone());
+        let mut ciphertext = vec![0;padded_data.len()];
+        box_up(&mut ciphertext, &padded_data, &n, &k1.public, &k2.secret);
+        let mut tweettext = vec![0;padded_data.len()];
+        crypto::box_up(&mut tweettext, &padded_data,
+                       &crypto::Nonce(n),
+                       &crypto::PublicKey(k1.public),
+                       &crypto::SecretKey(k2.secret));
+        for i in 0..ciphertext.len() {
+            assert_eq!(ciphertext[i], tweettext[i]);
+        }
+    }
+    quickcheck::quickcheck(f as fn(Vec<u8>, T24, KeyPair, KeyPair));
+}
+
+#[test]
 fn box_vs_tweetnacl() {
     use super::tweetnacl;
     fn f(data: Vec<u8>, n: T24, k1: KeyPair, k2: KeyPair) {
